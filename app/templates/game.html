@@ -1,0 +1,66 @@
+{% extends "base.html" %} {% block content %}
+<div id="game-screen" class="screen active">
+    <div class="top-board">
+        <div>
+            <span id="ms" data-i18n="mistakes"> Mistakes: </span>
+            <span id="err-counter">0</span>/3
+        </div>
+        <div>
+            <span id="tm" data-i18n="timer-g"> Time: </span>
+            <span id="timer-min">00</span>.
+            <span id="timer-sec">00</span>
+        </div>
+    </div>
+
+    <div class="board" id="board"></div>
+
+    <div class="bottom-controls">
+        <div>
+            <button id="undo" class="theme-toggle">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    fill="currentColor"
+                    class="bi bi-arrow-counterclockwise"
+                    viewBox="0 0 16 16">
+                    <path
+                        fill-rule="evenodd"
+                        d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z" />
+                    <path
+                        d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466" />
+                </svg>
+            </button>
+            <span data-i18n="undo">Undo</span>
+        </div>
+        <div>
+            <div id="num-hint">2</div>
+            <button id="hint" class="theme-toggle">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    fill="currentColor"
+                    class="bi bi-lightbulb"
+                    viewBox="0 0 16 16">
+                    <path
+                        d="M2 6a6 6 0 1 1 10.174 4.31c-.203.196-.359.4-.453.619l-.762 1.769A.5.5 0 0 1 10.5 13a.5.5 0 0 1 0 1 .5.5 0 0 1 0 1l-.224.447a1 1 0 0 1-.894.553H6.618a1 1 0 0 1-.894-.553L5.5 15a.5.5 0 0 1 0-1 .5.5 0 0 1 0-1 .5.5 0 0 1-.46-.302l-.761-1.77a2 2 0 0 0-.453-.618A5.98 5.98 0 0 1 2 6m6-5a5 5 0 0 0-3.479 8.592c.263.254.514.564.676.941L5.83 12h4.342l.632-1.467c.162-.377.413-.687.676-.941A5 5 0 0 0 8 1" />
+                </svg>
+            </button>
+            <span data-i18n="hint">Hint</span>
+        </div>
+    </div>
+
+    <div class="numbers-in" id="numPad">
+        <button data-num="1">1</button>
+        <button data-num="2">2</button>
+        <button data-num="3">3</button>
+        <button data-num="4">4</button>
+        <button data-num="5">5</button>
+        <button data-num="6">6</button>
+        <button data-num="7">7</button>
+        <button data-num="8">8</button>
+        <button data-num="9">9</button>
+    </div>
+</div>
+{% endblock %}

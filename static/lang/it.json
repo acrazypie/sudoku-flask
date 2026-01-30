@@ -1,0 +1,16 @@
+{
+    "start-desc": "Testa il tuo cervello!",
+    "easy-diff": "Facile",
+    "medium-diff": "Medio",
+    "expert-diff": "Esperto",
+    "master-diff": "Maestro",
+    "extreme-diff": "Estremo",
+    "start-btn": "Inizia",
+    "mistakes": " Errori: ",
+    "timer-g": " Tempo: ",
+    "retry-text": "La prossima volta, di sicuro...",
+    "retry-btn": "Riprova",
+    "win-text": " Yay! Risolto! ",
+    "win-btn": "Home",
+    "powered": "Powered by sudoku.js"
+}

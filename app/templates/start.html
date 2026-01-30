@@ -1,0 +1,18 @@
+{% extends "base.html" %} {% block content %}
+<div id="start-screen" class="screen active">
+    <h1>Sudoku</h1>
+    <p data-i18n="start-desc">Test your brain!</p>
+
+    <div class="diff-select">
+        <button data-i18n="easy-diff" id="easy" class="Dselected">Easy</button>
+        <button data-i18n="medium-diff" id="medium">Medium</button>
+        <button data-i18n="expert-diff" id="expert">Expert</button>
+        <button data-i18n="master-diff" id="master">Master</button>
+        <button data-i18n="extreme-diff" id="extreme">Extreme</button>
+    </div>
+
+    <button id="start-button" class="button" data-i18n="start-btn">
+        Start
+    </button>
+</div>
+{% endblock %}

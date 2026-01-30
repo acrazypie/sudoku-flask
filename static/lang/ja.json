@@ -1,0 +1,16 @@
+{
+    "start-desc": "頭をフル回転させよう！",
+    "easy-diff": "簡単",
+    "medium-diff": "中級",
+    "expert-diff": "上級",
+    "master-diff": "達人",
+    "extreme-diff": "超難問",
+    "start-btn": "スタート",
+    "mistakes": " ミス: ",
+    "timer-g": " 時間: ",
+    "retry-text": "次はきっとうまくいくよ！",
+    "retry-btn": "リトライ",
+    "win-text": " やった！クリアしたよ！ ",
+    "win-btn": "ホーム",
+    "powered": "Powered by sudoku.js"
+}

@@ -1,0 +1,275 @@
+{% extends "base.html" %} {% block content %}
+<div class="profile-container">
+    <div class="profile-box">
+        <h1>My Profile</h1>
+
+        <!-- Profile Picture -->
+        {% if current_user.picture %}
+        <img
+            src="{{ current_user.picture }}"
+            alt="Profile"
+            class="profile-picture" />
+        {% else %}
+        <div class="profile-picture-placeholder">
+            {{ current_user.name[0].upper() }}
+        </div>
+        {% endif %}
+
+        <!-- User Info -->
+        <div class="profile-info">
+            <div class="info-row">
+                <label>Name:</label>
+                <span>{{ current_user.name }}</span>
+            </div>
+
+            <div class="info-row">
+                <label>Email:</label>
+                <span>{{ current_user.email }}</span>
+            </div>
+
+            <div class="info-row">
+                <label>Nickname:</label>
+                <span id="nickname-display">{{ current_user.nickname }}</span>
+            </div>
+        </div>
+
+        <!-- Edit Nickname Section -->
+        <div class="edit-nickname-section">
+            <h2>Edit Nickname</h2>
+            <div class="nickname-input-group">
+                <input
+                    type="text"
+                    id="nickname-input"
+                    class="nickname-input"
+                    placeholder="Enter your nickname"
+                    value="{{ current_user.nickname }}"
+                    maxlength="50" />
+                <button id="update-nickname-btn" class="button">Update</button>
+            </div>
+            <small id="nickname-message"></small>
+        </div>
+
+        <!-- Account Actions -->
+        <div class="account-actions">
+            <a href="{{ url_for('main.index') }}" class="button-secondary"
+                >Back to Game</a
+            >
+            <a href="{{ url_for('auth.logout') }}" class="button-danger"
+                >Logout</a
+            >
+        </div>
+    </div>
+</div>
+
+<script>
+    const updateBtn = document.getElementById("update-nickname-btn");
+    const nicknameInput = document.getElementById("nickname-input");
+    const nicknameDisplay = document.getElementById("nickname-display");
+    const messageEl = document.getElementById("nickname-message");
+
+    updateBtn.addEventListener("click", async () => {
+        const nickname = nicknameInput.value.trim();
+
+        if (!nickname || nickname.length === 0) {
+            messageEl.textContent = "Nickname cannot be empty";
+            messageEl.style.color = "red";
+            return;
+        }
+
+        if (nickname.length > 50) {
+            messageEl.textContent = "Nickname is too long (max 50 characters)";
+            messageEl.style.color = "red";
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/profile/update-nickname", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ nickname: nickname }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                nicknameDisplay.textContent = nickname;
+                messageEl.textContent = "Nickname updated successfully!";
+                messageEl.style.color = "green";
+            } else {
+                messageEl.textContent =
+                    data.error || "Failed to update nickname";
+                messageEl.style.color = "red";
+            }
+        } catch (error) {
+            console.error("Error updating nickname:", error);
+            messageEl.textContent = "Error updating nickname";
+            messageEl.style.color = "red";
+        }
+    });
+
+    // Allow Enter key to submit
+    nicknameInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+            updateBtn.click();
+        }
+    });
+</script>
+
+<style>
+    .profile-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .profile-box {
+        background: var(--surface-color);
+        border: 2px solid var(--text-color);
+        border-radius: 10px;
+        padding: 40px;
+        max-width: 500px;
+        width: 100%;
+    }
+
+    .profile-box h1 {
+        font-size: 2rem;
+        text-align: center;
+        margin-bottom: 30px;
+        color: var(--primary-color);
+    }
+
+    .profile-picture {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        display: block;
+        margin: 0 auto 30px;
+        border: 3px solid var(--text-color);
+        object-fit: cover;
+    }
+
+    .profile-picture-placeholder {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        font-weight: bold;
+        margin: 0 auto 30px;
+        border: 3px solid var(--text-color);
+    }
+
+    .profile-info {
+        margin-bottom: 30px;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--text-color);
+        opacity: 0.8;
+    }
+
+    .info-row label {
+        font-weight: bold;
+        color: var(--text-color);
+    }
+
+    .info-row span {
+        color: var(--text-color);
+    }
+
+    .edit-nickname-section {
+        background: rgba(100, 100, 100, 0.1);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .edit-nickname-section h2 {
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+        color: var(--text-color);
+    }
+
+    .nickname-input-group {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .nickname-input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid var(--text-color);
+        border-radius: 4px;
+        background: var(--surface-color);
+        color: var(--text-color);
+        font-size: 1rem;
+    }
+
+    .nickname-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(100, 150, 200, 0.3);
+    }
+
+    #nickname-message {
+        display: block;
+        margin-top: 8px;
+        min-height: 20px;
+    }
+
+    .account-actions {
+        display: flex;
+        gap: 10px;
+        flex-direction: column;
+    }
+
+    .button-secondary {
+        display: block;
+        text-align: center;
+        padding: 12px 24px;
+        background: var(--surface-color);
+        border: 2px solid var(--text-color);
+        border-radius: 6px;
+        color: var(--text-color);
+        text-decoration: none;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    .button-secondary:hover {
+        background: var(--text-color);
+        color: var(--surface-color);
+    }
+
+    .button-danger {
+        display: block;
+        text-align: center;
+        padding: 12px 24px;
+        background: #e74c3c;
+        border: none;
+        border-radius: 6px;
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    .button-danger:hover {
+        background: #c0392b;
+    }
+</style>
+{% endblock %}
