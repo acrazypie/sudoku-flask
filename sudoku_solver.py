@@ -54,13 +54,184 @@ class SudokuSolver:
     def generate(self, difficulty: str = "easy", unique: bool = True) -> str:
         """
         Generate a new Sudoku puzzle based on difficulty.
-        Returns puzzle string with '.' for empty cells.
+
+        Algorithm:
+        1. Generate a complete valid solution using backtracking
+        2. Remove clues while maintaining uniqueness
+        3. Returns puzzle string with '.' for empty cells
+
+        Args:
+            difficulty: One of 'easy', 'medium', 'expert', 'master', 'extreme'
+            unique: If True, ensures puzzle has exactly one solution
+
+        Returns:
+            Puzzle string with digits and '.' for empty cells
         """
         if difficulty not in self.DIFFICULTY:
             difficulty = "easy"
 
-        # Use pre-generated puzzles as fallback
-        return self.PRE_GENERATED.get(difficulty, self.PRE_GENERATED["easy"])
+        # Step 1: Generate a complete valid solution
+        solution = self._generate_full_solution()
+        if not solution:
+            # Fallback to pre-generated
+            return self.PRE_GENERATED.get(difficulty, self.PRE_GENERATED["easy"])
+
+        # Step 2: Remove clues based on difficulty
+        target_blanks = self.DIFFICULTY[difficulty]
+        puzzle = self._remove_clues(solution, target_blanks, unique)
+
+        return puzzle
+
+    def _generate_full_solution(self) -> Optional[str]:
+        """
+        Generate a complete valid Sudoku solution using backtracking.
+        Returns a filled 81-character string or None if generation fails.
+        """
+        grid = list(self.BLANK_BOARD)
+
+        def is_valid(idx: int, digit: str) -> bool:
+            """Check if placing digit at index is valid"""
+            # Get the square name for this index
+            square = self.SQUARES[idx]
+
+            # Check peers
+            for peer in self.SQUARE_PEERS_MAP[square]:
+                peer_idx = self.SQUARES.index(peer)
+                if grid[peer_idx] == digit:
+                    return False
+            return True
+
+        def backtrack(idx: int) -> bool:
+            """Recursively fill the grid"""
+            if idx == self.NR_SQUARES:
+                return True
+
+            # Get a list of digits in random order
+            digits = list(self.DIGITS)
+            random.shuffle(digits)
+
+            for digit in digits:
+                if is_valid(idx, digit):
+                    grid[idx] = digit
+                    if backtrack(idx + 1):
+                        return True
+                    grid[idx] = self.BLANK_CHAR
+
+            return False
+
+        if backtrack(0):
+            return "".join(grid)
+        return None
+
+    def _remove_clues(
+        self, solution: str, target_blanks: int, unique: bool = True
+    ) -> str:
+        """
+        Remove clues from a complete solution to create a puzzle.
+
+        Args:
+            solution: Complete valid solution string
+            target_blanks: Target number of empty cells
+            unique: If True, ensures the puzzle has exactly one solution
+
+        Returns:
+            Puzzle string with clues removed
+        """
+        puzzle = list(solution)
+        removed_count = 0
+        max_attempts = self.NR_SQUARES * 2
+        attempts = 0
+
+        # Get list of all cell indices and shuffle them
+        indices = list(range(self.NR_SQUARES))
+        random.shuffle(indices)
+
+        for idx in indices:
+            if removed_count >= target_blanks or attempts > max_attempts:
+                break
+
+            attempts += 1
+
+            # Skip if already blank
+            if puzzle[idx] == self.BLANK_CHAR:
+                removed_count += 1
+                continue
+
+            # Try removing this clue
+            clue = puzzle[idx]
+            puzzle[idx] = self.BLANK_CHAR
+
+            # Check if puzzle still has unique solution (if required)
+            if unique:
+                solution_count = self._count_solutions("".join(puzzle), limit=2)
+                if solution_count != 1:
+                    # Put the clue back
+                    puzzle[idx] = clue
+                    continue
+
+            removed_count += 1
+
+        return "".join(puzzle)
+
+    def _count_solutions(self, board: str, limit: int = 2) -> int:
+        """
+        Count the number of solutions for a puzzle (with early termination).
+
+        Args:
+            board: Puzzle string
+            limit: Stop counting after reaching this limit
+
+        Returns:
+            Number of solutions found (capped at limit)
+        """
+        self.validate_board(board)
+
+        count = [0]  # Use list to allow modification in nested function
+
+        def search(candidates: Dict[str, str]) -> bool:
+            """Search for solutions, return True to continue searching"""
+            if count[0] > limit:
+                return False
+
+            if not candidates:
+                return False
+
+            # Check if solved
+            all_solved = all(len(candidates[sq]) == 1 for sq in self.SQUARES)
+            if all_solved:
+                count[0] += 1
+                return count[0] <= limit
+
+            # Find square with minimum candidates > 1
+            min_candidates_square = None
+            min_nr_candidates = 10
+
+            for square in self.SQUARES:
+                nr_candidates = len(candidates[square])
+                if 1 < nr_candidates < min_nr_candidates:
+                    min_nr_candidates = nr_candidates
+                    min_candidates_square = square
+
+            if not min_candidates_square:
+                count[0] += 1
+                return count[0] <= limit
+
+            # Try each candidate
+            for val in candidates[min_candidates_square]:
+                if not search(
+                    self._assign(
+                        json.loads(json.dumps(candidates)), min_candidates_square, val
+                    )
+                ):
+                    pass  # Continue searching other branches
+
+            return count[0] <= limit
+
+        candidates = self._get_candidates_map(board)
+        if candidates:
+            search(candidates)
+
+        return count[0]
 
     def solve(self, board: str, reverse: bool = False) -> str:
         """

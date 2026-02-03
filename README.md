@@ -7,6 +7,8 @@ A professional web-based Sudoku game with Python backend logic running on Flask.
 ## ✨ Features
 
 - 🎯 **5 Difficulty Levels**: Easy, Medium, Expert, Master, Extreme
+- � **Dynamic Puzzle Generation**: Real-time Sudoku generation with guaranteed unique solutions
+- 📊 **Scoring System**: Points based on difficulty, time, and accuracy (sudoku.com-style)
 - 🌍 **Multi-language**: English, Italiano, Français, Deutsch, Español, 日本語
 - 🌙 **Dark Mode**: Light and dark themes with cohesive colors
 - 📱 **Mobile Responsive**: Perfectly optimized for all devices
@@ -15,6 +17,7 @@ A professional web-based Sudoku game with Python backend logic running on Flask.
 - ↩️ **Undo**: Revert your last move
 - 🎨 **Intuitive UI**: Integrated numpad and automatic highlighting
 - ✅ **Real-time Validation**: Immediate feedback on moves
+- 🔐 **User Scores**: Save and track your game history with Google OAuth
 - 🐍 **Python Backend**: All Sudoku logic powered by Python
 
 ## 🚀 How to Play
@@ -29,17 +32,20 @@ A professional web-based Sudoku game with Python backend logic running on Flask.
 ## 🛠️ Tech Stack
 
 **Backend:**
+
 - Python 3.8+
 - Flask 3.0.0
 - sudoku_solver.py (Python port of sudoku.js)
 
 **Frontend:**
+
 - HTML5 with Jinja2 templates
 - CSS3 with responsive grid layout
 - JavaScript ES6+ with async/await
 - Bootstrap Icons
 
 **Architecture:**
+
 - Flask Blueprints for modular routes
 - Application Factory pattern
 - RESTful API endpoints
@@ -83,13 +89,13 @@ sudoku-flask/
 
 ## 📊 Difficulty Levels
 
-| Level    | Givens | Description            |
-| -------- | ------ | ---------------------- |
-| Easy     | 62     | Perfect for beginners   |
-| Medium   | 52     | A moderate challenge   |
-| Expert   | 42     | For experienced players |
-| Master   | 32     | Very challenging       |
-| Extreme  | 22     | Maximum difficulty     |
+| Level   | Givens | Description             |
+| ------- | ------ | ----------------------- |
+| Easy    | 62     | Perfect for beginners   |
+| Medium  | 52     | A moderate challenge    |
+| Expert  | 42     | For experienced players |
+| Master  | 32     | Very challenging        |
+| Extreme | 22     | Maximum difficulty      |
 
 ## 🌐 Supported Languages
 
@@ -147,28 +153,36 @@ The app automatically saves:
 ## 🔌 API Endpoints
 
 ### Generate Puzzle
+
 **POST** `/api/generate`
+
 ```json
 {"difficulty": "easy"}
 → {"success": true, "puzzle": "53..7....6..195..."}
 ```
 
 ### Solve Puzzle
+
 **POST** `/api/solve`
+
 ```json
 {"board": "53..7....6..195..."}
 → {"success": true, "solution": "534678912672195348..."}
 ```
 
 ### Get Hint
+
 **POST** `/api/get-hint`
+
 ```json
 {"solution": "534678...", "board": "53..7...."}
 → {"success": true, "index": 5, "value": "6"}
 ```
 
 ### Validate Move
+
 **POST** `/api/validate`
+
 ```json
 {"index": 0, "value": "5", "solution": "534..."}
 → {"success": true, "correct": true}
@@ -206,13 +220,170 @@ pip install gunicorn
 gunicorn -w 4 -b 0.0.0.0:8000 app:app
 ```
 
-## 🧠 Sudoku Solver Algorithm
+## 🧠 Sudoku Solver & Generator
 
-The Python solver uses advanced techniques:
+### Generator Algorithm
+
+The `sudoku_solver.py` implements a **two-phase puzzle generation** process:
+
+1. **Full Solution Generation** (`_generate_full_solution`)
+    - Uses backtracking algorithm with random digit ordering
+    - Builds a complete, valid 81-cell solution
+    - Time complexity: O(9^n) optimized with constraint checking
+
+2. **Clue Removal** (`_remove_clues`)
+    - Removes clues from the solution to create the puzzle
+    - Maintains uniqueness: only one valid solution per puzzle
+    - Algorithm:
+        ```
+        1. Start with complete solution
+        2. Randomly select cell to remove
+        3. Check if puzzle still has exactly 1 solution
+        4. If yes, keep removal; if no, restore clue
+        5. Repeat until target blank count reached
+        ```
+    - Target blanks per difficulty:
+        - Easy: 19 blanks (62 givens)
+        - Medium: 29 blanks (52 givens)
+        - Expert: 39 blanks (42 givens)
+        - Master: 49 blanks (32 givens)
+        - Extreme: 59 blanks (22 givens)
+
+3. **Uniqueness Verification** (`_count_solutions`)
+    - Uses early termination to count solutions up to a limit
+    - Ensures puzzle has exactly one solution
+    - Runs after each clue removal (for strict uniqueness)
+
+### Solver Algorithm
 
 - **Constraint Propagation**: Eliminates candidates based on Sudoku rules
 - **Backtracking**: When propagation isn't sufficient
 - **Depth-First Search**: With candidate-count heuristics for efficiency
+
+## 📊 Scoring System
+
+### How Scores are Calculated
+
+The scoring system is inspired by sudoku.com:
+
+```
+Formula: SCORE = (BASE * DIFFICULTY_MULTIPLIER + TIME_BONUS - MISTAKES_PENALTY)
+
+Where:
+- BASE = 1000 points
+- DIFFICULTY_MULTIPLIER:
+  - Easy: 1.0x
+  - Medium: 1.5x
+  - Expert: 2.0x
+  - Master: 3.0x
+  - Extreme: 5.0x
+- TIME_BONUS = max(0, (600 - seconds) * 0.5)
+  - Rewards fast solving (max bonus at 600 seconds = 10 minutes)
+- MISTAKES_PENALTY = mistakes * 50
+  - Each mistake costs 50 points
+```
+
+### Example Score Calculations
+
+| Difficulty | Time  | Mistakes | Calculation            | Score |
+| ---------- | ----- | -------- | ---------------------- | ----- |
+| Easy       | 2:00  | 0        | (1000×1.0 + 480 - 0)   | 1480  |
+| Medium     | 5:00  | 1        | (1000×1.5 + 350 - 50)  | 1800  |
+| Expert     | 10:00 | 2        | (1000×2.0 + 200 - 100) | 2100  |
+| Master     | 15:00 | 0        | (1000×3.0 + 50 - 0)    | 3050  |
+| Extreme    | 20:00 | 1        | (1000×5.0 - 50 - 50)   | 4900  |
+
+### Data Storage
+
+- **Session Storage**: Scores stored in Flask `session` for session-based games
+- **Database Storage**: Authenticated users have scores saved to `Score` model
+- **Score Record Fields**:
+    - `user_id`: Foreign key to User
+    - `difficulty`: Puzzle difficulty level
+    - `score`: Calculated score value
+    - `time_seconds`: Total game time
+    - `mistakes`: Number of mistakes made
+    - `completed_at`: Timestamp of completion
+
+### API Endpoints
+
+#### POST `/api/generate`
+
+Generates a new puzzle with dynamic algorithm.
+
+**Request:**
+
+```json
+{
+    "difficulty": "easy|medium|expert|master|extreme"
+}
+```
+
+**Response:**
+
+```json
+{
+    "success": true,
+    "puzzle": "5...7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79",
+    "difficulty": "easy"
+}
+```
+
+#### POST `/api/save-score`
+
+Saves game score to session/database.
+
+**Request:**
+
+```json
+{
+    "difficulty": "easy",
+    "time": 120,
+    "mistakes": 0,
+    "score": 1480,
+    "timestamp": "2024-02-02T10:30:00Z"
+}
+```
+
+**Response:**
+
+```json
+{
+    "success": true,
+    "score": 1480,
+    "saved_to_db": true
+}
+```
+
+#### GET `/api/get-scores`
+
+Retrieves user's score history (authenticated users only).
+
+**Response:**
+
+```json
+{
+    "success": true,
+    "scores": [
+        {
+            "id": 1,
+            "difficulty": "easy",
+            "score": 1480,
+            "time_seconds": 120,
+            "mistakes": 0,
+            "completed_at": "2024-02-02T10:30:00"
+        }
+    ],
+    "statistics": {
+        "total_games": 1,
+        "highest_score": 1480,
+        "average_score": 1480,
+        "by_difficulty": {
+            "easy": { "count": 1, "highest": 1480, "average": 1480 }
+        }
+    }
+}
+```
 
 ## 🔧 Development
 
@@ -223,26 +394,45 @@ The Python solver uses advanced techniques:
 3. **New API**: Add endpoints in `app/routes/api.py`
 4. **Configuration**: Update `app/__init__.py`
 
-### Testing the Solver
+### Testing the Solver and Generator
 
 ```python
 from sudoku_solver import SudokuSolver
 
 sudoku = SudokuSolver()
+
+# Generate a puzzle
 puzzle = sudoku.generate('easy')
+print(f"Puzzle: {puzzle}")
+
+# Solve it
 solution = sudoku.solve(puzzle)
-print(solution)
+print(f"Solution: {solution}")
+
+# Verify uniqueness
+num_solutions = sudoku._count_solutions(puzzle, limit=2)
+print(f"Number of solutions: {num_solutions}")
+```
+
+### Testing Score Calculation
+
+```javascript
+// In browser console or JavaScript
+const score = calculateScore("medium", 300, 1); // 5 min, 1 mistake
+console.log(score); // Should be around 1800
 ```
 
 ## 🗺️ Roadmap
 
-- [ ] Dynamic puzzle generation (currently pre-generated)
+- [x] Dynamic puzzle generation with uniqueness guarantee
+- [x] Scoring system based on difficulty, time, and accuracy
+- [x] Session-based score tracking
+- [x] Database persistence for authenticated users
 - [ ] Advanced solving strategies
-- [ ] Leaderboards and scoring system
+- [ ] Leaderboards and rankings
 - [ ] Multiplayer support
-- [ ] Database integration
-- [ ] User accounts and profiles
-- [ ] Game statistics tracking
+- [ ] Game statistics and achievements
+- [ ] Difficulty rating analysis
 
 ## 🐛 Known Issues
 

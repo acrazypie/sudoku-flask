@@ -23,9 +23,46 @@ class User(UserMixin, db.Model):
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
+    # Relationship to scores
+    scores = db.relationship(
+        "Score", backref="user", lazy=True, cascade="all, delete-orphan"
+    )
+
     def __repr__(self):
         return f"<User {self.email}>"
 
     def get_id(self):
         """Required by Flask-Login"""
         return str(self.id)
+
+
+class Score(db.Model):
+    """Score model for storing game results"""
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("user.id"), nullable=False, index=True
+    )
+    difficulty = db.Column(
+        db.String(20), nullable=False
+    )  # easy, medium, expert, master, extreme
+    score = db.Column(db.Integer, nullable=False)
+    time_seconds = db.Column(db.Integer, nullable=False)  # Total time in seconds
+    mistakes = db.Column(db.Integer, nullable=False)  # Number of mistakes
+    completed_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def __repr__(self):
+        return f"<Score user={self.user_id} difficulty={self.difficulty} score={self.score}>"
+
+    def to_dict(self):
+        """Convert score to dictionary"""
+        return {
+            "id": self.id,
+            "difficulty": self.difficulty,
+            "score": self.score,
+            "time_seconds": self.time_seconds,
+            "mistakes": self.mistakes,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
+        }

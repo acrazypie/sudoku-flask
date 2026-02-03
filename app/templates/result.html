@@ -1,0 +1,241 @@
+{% extends "base.html" %} {% block content %}
+<div id="result-screen" class="screen active">
+    <div class="result-container">
+        <h1 data-i18n="win-text">Yay! You solved it!</h1>
+
+        <div class="score-card">
+            <div class="score-value" id="final-score">0</div>
+            <p data-i18n="your-score">Your Score</p>
+        </div>
+
+        <div class="result-stats">
+            <div class="stat-item">
+                <span data-i18n="difficulty-label">Difficulty:</span>
+                <span id="result-difficulty">Easy</span>
+            </div>
+            <div class="stat-item">
+                <span data-i18n="timer-g">Time:</span>
+                <span id="result-time">00:00</span>
+            </div>
+            <div class="stat-item">
+                <span data-i18n="mistakes">Mistakes:</span>
+                <span id="result-mistakes">0</span>
+            </div>
+        </div>
+
+        <div class="score-history">
+            <h3 data-i18n="score-history">Score History</h3>
+            <div id="history-list" class="history-list">
+                <p data-i18n="no-scores">No scores yet</p>
+            </div>
+        </div>
+
+        <div class="result-actions">
+            <button id="play-again-btn" class="button" data-i18n="play-again">
+                Play Again
+            </button>
+            <button
+                id="home-btn-result"
+                class="button secondary"
+                data-i18n="home">
+                Home
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/result.js"></script>
+
+<style>
+    .result-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2rem;
+        padding: 2rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .result-container h1 {
+        font-size: 2.5rem;
+        color: var(--color-primary);
+        margin: 0;
+    }
+
+    .score-card {
+        background: linear-gradient(
+            135deg,
+            var(--color-primary),
+            var(--color-accent)
+        );
+        padding: 2rem;
+        border-radius: 1.5rem;
+        color: white;
+        text-align: center;
+        min-width: 200px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .score-value {
+        font-size: 4rem;
+        font-weight: 900;
+        margin: 0.5rem 0;
+    }
+
+    .score-card p {
+        margin: 0;
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+
+    .result-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        width: 100%;
+    }
+
+    .stat-item {
+        background: var(--color-bg-secondary);
+        padding: 1rem;
+        border-radius: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .stat-item span:first-child {
+        font-size: 0.85rem;
+        color: var(--color-text-secondary);
+        font-weight: 500;
+    }
+
+    .stat-item span:last-child {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--color-primary);
+    }
+
+    .score-history {
+        width: 100%;
+    }
+
+    .score-history h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1.2rem;
+        color: var(--color-text);
+    }
+
+    .history-list {
+        background: var(--color-bg-secondary);
+        border-radius: 1rem;
+        max-height: 300px;
+        overflow-y: auto;
+        padding: 0.5rem;
+    }
+
+    .history-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        border-bottom: 1px solid var(--color-grid-border);
+        font-size: 0.95rem;
+    }
+
+    .history-item:last-child {
+        border-bottom: none;
+    }
+
+    .history-item-left {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex: 1;
+    }
+
+    .difficulty-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        min-width: 70px;
+        text-align: center;
+    }
+
+    .difficulty-badge.easy {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .difficulty-badge.medium {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .difficulty-badge.expert {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .difficulty-badge.master {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .difficulty-badge.extreme {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+
+    .history-score {
+        font-weight: 700;
+        color: var(--color-primary);
+    }
+
+    .result-actions {
+        display: flex;
+        gap: 1rem;
+        width: 100%;
+        margin-top: 1rem;
+    }
+
+    .result-actions button {
+        flex: 1;
+    }
+
+    .button.secondary {
+        background: var(--color-bg-secondary);
+        color: var(--color-text);
+        border: 2px solid var(--color-grid-border);
+    }
+
+    .button.secondary:hover {
+        background: var(--color-grid-border);
+    }
+
+    @media (max-width: 600px) {
+        .result-container {
+            padding: 1rem;
+        }
+
+        .result-container h1 {
+            font-size: 1.8rem;
+        }
+
+        .score-value {
+            font-size: 3rem;
+        }
+
+        .result-stats {
+            grid-template-columns: 1fr;
+        }
+
+        .result-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}

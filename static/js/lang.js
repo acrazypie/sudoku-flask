@@ -8,12 +8,14 @@ document.addEventListener("DOMContentLoaded", () => {
     langToggle.addEventListener("click", (e) => {
         e.stopPropagation();
         langMenu.classList.toggle("show");
+        langMenu.classList.toggle("hidden");
     });
 
     // --- Close when clicking outside ---
     document.addEventListener("click", (e) => {
         if (!langMenu.contains(e.target) && !langToggle.contains(e.target)) {
             langMenu.classList.remove("show");
+            langMenu.classList.add("hidden");
         }
     });
 
@@ -23,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const lang = item.dataset.lang;
             setLanguage(lang);
             langMenu.classList.remove("show");
+            langMenu.classList.add("hidden");
         });
     });
 
@@ -40,7 +43,7 @@ async function setLanguage(lang) {
     document.documentElement.setAttribute("lang", lang);
 
     try {
-        const response = await fetch(`/lang/${lang}.json`);
+        const response = await fetch(`/static/lang/${lang}.json`);
         if (!response.ok) throw new Error(`Missing ${lang}.json`);
         const translations = await response.json();
         applyTranslations(translations);

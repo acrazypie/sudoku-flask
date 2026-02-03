@@ -1,9 +1,9 @@
 """
 API routes for Sudoku game
-Handles puzzle generation, solving, and validation
+Handles puzzle generation, solving, validation, and scoring
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 from sudoku_solver import SudokuSolver
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -13,12 +13,21 @@ sudoku = SudokuSolver()
 @api_bp.route("/generate", methods=["POST"])
 def generate_puzzle():
     """Generate a new Sudoku puzzle based on difficulty"""
-    data = request.get_json()
+    data = request.get_json() or {}
     difficulty = data.get("difficulty", "easy")
 
     try:
         puzzle = sudoku.generate(difficulty)
-        return jsonify({"success": True, "puzzle": puzzle})
+
+        # Solve the puzzle to get the solution
+        solution = sudoku.solve(puzzle)
+
+        # Store in session
+        session["puzzle"] = puzzle
+        session["solution"] = solution
+        session["difficulty"] = difficulty
+
+        return jsonify({"success": True, "puzzle": puzzle, "difficulty": difficulty})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
 
@@ -74,5 +83,52 @@ def get_hint():
                 return jsonify({"success": True, "index": i, "value": solution[i]})
 
         return jsonify({"success": False, "error": "No empty cells"}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@api_bp.route("/score", methods=["POST"])
+def save_score():
+    """
+    Save game score to session.
+
+    Expected JSON:
+    {
+        "difficulty": "easy|medium|expert|master|extreme",
+        "time": <seconds>,
+        "mistakes": <number>,
+        "score": <calculated score>
+    }
+    """
+    data = request.get_json() or {}
+
+    try:
+        # Get or create scores list in session
+        if "scores" not in session:
+            session["scores"] = []
+
+        score_entry = {
+            "difficulty": data.get("difficulty", "unknown"),
+            "time": data.get("time", 0),
+            "mistakes": data.get("mistakes", 0),
+            "score": data.get("score", 0),
+            "timestamp": data.get("timestamp", ""),
+        }
+
+        # Add to scores list
+        session["scores"].append(score_entry)
+        session.modified = True
+
+        # Calculate statistics
+        scores_list = [s["score"] for s in session["scores"]]
+        stats = {
+            "current_score": score_entry["score"],
+            "total_games": len(session["scores"]),
+            "highest_score": max(scores_list) if scores_list else 0,
+            "average_score": sum(scores_list) / len(scores_list) if scores_list else 0,
+            "all_scores": session["scores"],
+        }
+
+        return jsonify({"success": True, "stats": stats})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400

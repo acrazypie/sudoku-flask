@@ -105,11 +105,18 @@
 
             if (userBtn) {
                 userBtn.addEventListener("click", () => {
-                    userDropdown.classList.toggle("hidden");
+                    if (userDropdown.classList.contains("hidden")) {
+                        userDropdown.classList.remove("hidden");
+                        userDropdown.classList.add("show");
+                    } else {
+                        userDropdown.classList.remove("show");
+                        userDropdown.classList.add("hidden");
+                    }
                 });
 
                 document.addEventListener("click", (e) => {
                     if (!e.target.closest(".user-menu")) {
+                        userDropdown.classList.remove("show");
                         userDropdown.classList.add("hidden");
                     }
                 });
@@ -170,14 +177,33 @@
 
             #user-dropdown {
                 position: absolute;
-                top: 100%;
+                top: 3rem;
                 right: 0;
+                list-style: none;
+                padding: 0.5rem 0;
+                overflow: hidden;
+                opacity: 0;
+                transform: translateY(-10px);
+                pointer-events: none;
+                transition:
+                    opacity 0.3s ease,
+                    transform 0.3s ease;
+                z-index: 100;
                 background: var(--surface-color);
                 border: 1px solid var(--text-color);
                 border-radius: 6px;
-                margin-top: 4px;
                 min-width: 150px;
-                z-index: 100;
+            }
+
+            #user-dropdown.show {
+                opacity: 1;
+                transform: translateY(0);
+                pointer-events: auto;
+                animation: popIn 0.25s ease forwards;
+            }
+
+            #user-dropdown.hidden {
+                animation: popIn 0.25s ease backwards;
             }
 
             #user-dropdown li {
@@ -189,12 +215,12 @@
                 padding: 10px 16px;
                 color: var(--text-color);
                 text-decoration: none;
-                transition: background 0.3s ease;
+                transition: background 0.2s ease;
             }
 
             #user-dropdown a:hover {
-                background: var(--primary-color);
-                color: white;
+                background: var(--dark-grey);
+                color: var(--text-light);
             }
 
             #user-dropdown .divider {
@@ -202,6 +228,17 @@
                 background: var(--text-color);
                 opacity: 0.2;
                 margin: 4px 0;
+            }
+
+            @keyframes popIn {
+                0% {
+                    opacity: 0;
+                    transform: translateY(-10px) scale(0.95);
+                }
+                100% {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
             }
 
             .login-link {

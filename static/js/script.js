@@ -29,6 +29,21 @@ const numPad = document.getElementById("numPad");
 const numHint = document.getElementById("num-hint");
 
 // -------------------------------------------
+// Scoring Constants
+// -------------------------------------------
+const DIFFICULTY_MULTIPLIER = {
+    easy: 1.0,
+    medium: 1.5,
+    expert: 2.0,
+    master: 3.0,
+    extreme: 5.0,
+};
+
+const BASE_SCORE = 1000;
+const BONUS_PER_SECOND = 0.5; // Points for fast solving
+const PENALTY_PER_MISTAKE = 50; // Points deducted per mistake
+
+// -------------------------------------------
 // Difficulty selection
 // -------------------------------------------
 diffBtns.forEach((btn) => {
@@ -68,6 +83,28 @@ function stopTimer() {
 }
 
 // -------------------------------------------
+// Scoring
+// -------------------------------------------
+function calculateScore(difficulty, timeTaken, mistakesMade) {
+    // Calculate score based on:
+    // - Base score: 1000
+    // - Difficulty multiplier: 1.0x (easy) to 5.0x (extreme)
+    // - Time bonus: Extra points for solving fast
+    // - Mistake penalty: -50 points per mistake
+
+    const multiplier = DIFFICULTY_MULTIPLIER[difficulty] || 1.0;
+    const baseWithMultiplier = BASE_SCORE * multiplier;
+    const timeBonus = Math.max(0, (600 - timeTaken) * BONUS_PER_SECOND);
+    const mistakePenalty = mistakesMade * PENALTY_PER_MISTAKE;
+
+    const finalScore = Math.max(
+        0,
+        baseWithMultiplier + timeBonus - mistakePenalty,
+    );
+    return Math.round(finalScore);
+}
+
+// -------------------------------------------
 // Generate board
 // -------------------------------------------
 function generateBoard(boardString) {
@@ -83,13 +120,11 @@ function generateBoard(boardString) {
             cell.textContent = char;
             cell.classList.add("prefilled");
 
-            // Clicking on a prefilled cell selects it and highlights same numbers
             cell.addEventListener("click", () => {
                 selectCell(cell);
                 highlightSameNumbers(char);
             });
 
-            // Show same numbers on hover too
             cell.addEventListener("mouseenter", () => {
                 clearHighlights();
                 highlightSameNumbers(char);
@@ -104,7 +139,6 @@ function generateBoard(boardString) {
                 }
             });
         } else {
-            // Normal editable cell
             cell.addEventListener("click", () => selectCell(cell));
         }
 
@@ -130,69 +164,14 @@ function generateBoard(boardString) {
 }
 
 // -------------------------------------------
-// Start Game (with Flask API)
+// Start Game (with Flask API and loading screen)
 // -------------------------------------------
 startBtn.addEventListener("click", async () => {
-    // Reset UI variables
-    mistakes = 0;
-    hintsLeft = 2;
-    errCounter.textContent = mistakes;
-    numHint.textContent = hintsLeft;
+    // Store difficulty in sessionStorage so loading page can access it
+    sessionStorage.setItem("difficulty", selectedDifficulty);
 
-    // Track time for generation speed
-    const t0 = performance.now();
-
-    try {
-        // Generate a new puzzle via Flask API
-        const generateResponse = await fetch("/api/generate", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ difficulty: selectedDifficulty }),
-        });
-
-        if (!generateResponse.ok) {
-            throw new Error("Failed to generate puzzle");
-        }
-
-        const generateData = await generateResponse.json();
-        const board = generateData.puzzle;
-
-        // Solve the puzzle via Flask API
-        const solveResponse = await fetch("/api/solve", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ board: board }),
-        });
-
-        if (!solveResponse.ok) {
-            throw new Error("Failed to solve puzzle");
-        }
-
-        const solveData = await solveResponse.json();
-        const solved = solveData.solution;
-
-        const t1 = performance.now();
-        const genTime = ((t1 - t0) / 1000).toFixed(2);
-
-        console.log(
-            `Generated new ${selectedDifficulty} puzzle in ${genTime}s`,
-        );
-
-        // Save game state to sessionStorage for the game page
-        sessionStorage.setItem("puzzle", board);
-        sessionStorage.setItem("solution", solved);
-        sessionStorage.setItem("timestamp", Date.now());
-
-        // Navigate to game page
-        window.location.href = "/game";
-    } catch (error) {
-        console.error("Error starting game:", error);
-        alert("Error generating puzzle. Please try again.");
-    }
+    // Show loading screen - generation will happen on that page
+    window.location.href = "/loading";
 });
 
 // -------------------------------------------
@@ -258,11 +237,9 @@ numPad.addEventListener("click", (e) => {
 
     const number = button.dataset.num;
 
-    // Highlight all same numbers even if no cell selected
     clearHighlights();
     highlightSameNumbers(number);
 
-    // Also reapply selection highlight if one is active
     if (selectedCell) {
         selectedCell.classList.add("selected");
         highlightRowColBox(selectedCell);
@@ -270,7 +247,6 @@ numPad.addEventListener("click", (e) => {
             highlightSameNumbers(selectedCell.textContent);
     }
 
-    // If a cell is selected, place the number
     if (!selectedCell) return;
 
     const index = Array.from(boardContainer.children).indexOf(selectedCell);
@@ -330,30 +306,66 @@ function checkWin() {
     );
     if (filled) {
         stopTimer();
-        // Set cookie to indicate win
-        document.cookie = "game_state=won; path=/; max-age=300";
-        window.location.href = "/win";
+
+        const difficulty = sessionStorage.getItem("difficulty") || "easy";
+        const score = calculateScore(difficulty, seconds, mistakes);
+
+        sessionStorage.setItem("finalScore", score);
+        sessionStorage.setItem("gameTime", seconds);
+        sessionStorage.setItem("gameMistakes", mistakes);
+        sessionStorage.setItem("gameDifficulty", difficulty);
+
+        sendScoreToBackend(difficulty, seconds, mistakes, score);
+
+        window.location.href = "/result";
     }
 }
 
 function gameOver() {
     stopTimer();
-    // Set cookie to indicate loss
     document.cookie = "game_state=lost; path=/; max-age=300";
     window.location.href = "/over";
+}
+
+// -------------------------------------------
+// Send score to backend
+// -------------------------------------------
+async function sendScoreToBackend(difficulty, timeTaken, mistakesMade, score) {
+    try {
+        const response = await fetch("/api/save-score", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                difficulty: difficulty,
+                time: timeTaken,
+                mistakes: mistakesMade,
+                score: score,
+                timestamp: new Date().toISOString(),
+            }),
+        });
+
+        if (!response.ok) {
+            console.warn("Failed to save score to backend");
+        }
+
+        const data = await response.json();
+        console.log("Score saved:", data);
+    } catch (error) {
+        console.error("Error sending score to backend:", error);
+    }
 }
 
 // -------------------------------------------
 // Retry / Home
 // -------------------------------------------
 overBtn.addEventListener("click", () => {
-    // Clear game state cookie
     document.cookie = "game_state=; path=/; max-age=0";
     window.location.href = "/";
 });
 
 homeBtn.addEventListener("click", () => {
-    // Clear game state cookie
     document.cookie = "game_state=; path=/; max-age=0";
     window.location.href = "/";
 });
@@ -362,22 +374,17 @@ homeBtn.addEventListener("click", () => {
 // Initialize game page (when loaded)
 // -------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
-    // Check if we're on the game page and have puzzle data
     if (boardContainer && sessionStorage.getItem("puzzle")) {
         currentBoard = sessionStorage.getItem("puzzle");
         solution = sessionStorage.getItem("solution");
 
-        // Reset game variables
         mistakes = 0;
         hintsLeft = 2;
         undoStack = [];
         errCounter.textContent = mistakes;
         numHint.textContent = hintsLeft;
 
-        // Load board visually
         generateBoard(currentBoard);
-
-        // Start timer
         startTimer();
     }
 });
