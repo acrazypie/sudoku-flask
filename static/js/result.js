@@ -5,6 +5,10 @@
 
 document.addEventListener("DOMContentLoaded", () => {
     const finalScoreEl = document.getElementById("final-score");
+    
+    // Exit if not on result page
+    if (!finalScoreEl) return;
+    
     const resultDifficultyEl = document.getElementById("result-difficulty");
     const resultTimeEl = document.getElementById("result-time");
     const resultMistakesEl = document.getElementById("result-mistakes");
@@ -52,6 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // -------------------------------------------
 async function loadScoreHistory() {
     const historyListEl = document.getElementById("history-list");
+    if (!historyListEl) return;
 
     try {
         const response = await fetch("/api/get-scores", {

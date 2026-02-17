@@ -15,18 +15,7 @@ let undoStack = [];
 let selectedDifficulty = "easy";
 
 // --- ELEMENTS ---
-const boardContainer = document.getElementById("board");
-const startBtn = document.getElementById("start-button");
-const overBtn = document.getElementById("over-button");
-const homeBtn = document.getElementById("home-button");
-const diffBtns = document.querySelectorAll(".diff-select button");
-const errCounter = document.getElementById("err-counter");
-const hintBtn = document.getElementById("hint");
-const undoBtn = document.getElementById("undo");
-const timerMin = document.getElementById("timer-min");
-const timerSec = document.getElementById("timer-sec");
-const numPad = document.getElementById("numPad");
-const numHint = document.getElementById("num-hint");
+let boardContainer, startBtn, overBtn, homeBtn, diffBtns, errCounter, hintBtn, undoBtn, timerMin, timerSec, numPad, numHint;
 
 // -------------------------------------------
 // Scoring Constants
@@ -40,33 +29,14 @@ const DIFFICULTY_MULTIPLIER = {
 };
 
 const BASE_SCORE = 1000;
-const BONUS_PER_SECOND = 0.5; // Points for fast solving
-const PENALTY_PER_MISTAKE = 50; // Points deducted per mistake
-
-// -------------------------------------------
-// Difficulty selection
-// -------------------------------------------
-diffBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-        diffBtns.forEach((b) => b.classList.remove("Dselected"));
-        btn.classList.add("Dselected");
-        selectedDifficulty = btn.id;
-        localStorage.setItem("diff", selectedDifficulty);
-    });
-});
-
-const savedDiff = localStorage.getItem("diff");
-if (savedDiff) {
-    diffBtns.forEach((b) => {
-        b.classList.toggle("Dselected", b.id === savedDiff);
-    });
-    selectedDifficulty = savedDiff;
-}
+const BONUS_PER_SECOND = 0.5;
+const PENALTY_PER_MISTAKE = 50;
 
 // -------------------------------------------
 // Timer
 // -------------------------------------------
 function startTimer() {
+    if (!timerMin || !timerSec) return;
     seconds = 0;
     clearInterval(timer);
     timer = setInterval(() => {
@@ -86,28 +56,18 @@ function stopTimer() {
 // Scoring
 // -------------------------------------------
 function calculateScore(difficulty, timeTaken, mistakesMade) {
-    // Calculate score based on:
-    // - Base score: 1000
-    // - Difficulty multiplier: 1.0x (easy) to 5.0x (extreme)
-    // - Time bonus: Extra points for solving fast
-    // - Mistake penalty: -50 points per mistake
-
     const multiplier = DIFFICULTY_MULTIPLIER[difficulty] || 1.0;
     const baseWithMultiplier = BASE_SCORE * multiplier;
     const timeBonus = Math.max(0, (600 - timeTaken) * BONUS_PER_SECOND);
     const mistakePenalty = mistakesMade * PENALTY_PER_MISTAKE;
-
-    const finalScore = Math.max(
-        0,
-        baseWithMultiplier + timeBonus - mistakePenalty,
-    );
-    return Math.round(finalScore);
+    return Math.max(0, Math.round(baseWithMultiplier + timeBonus - mistakePenalty));
 }
 
 // -------------------------------------------
 // Generate board
 // -------------------------------------------
 function generateBoard(boardString) {
+    if (!boardContainer) return;
     boardContainer.innerHTML = "";
     const chars = boardString.split("");
 
@@ -119,12 +79,10 @@ function generateBoard(boardString) {
         if (char !== ".") {
             cell.textContent = char;
             cell.classList.add("prefilled");
-
             cell.addEventListener("click", () => {
                 selectCell(cell);
                 highlightSameNumbers(char);
             });
-
             cell.addEventListener("mouseenter", () => {
                 clearHighlights();
                 highlightSameNumbers(char);
@@ -133,8 +91,7 @@ function generateBoard(boardString) {
                 clearHighlights();
                 if (selectedCell) {
                     highlightRowColBox(selectedCell);
-                    if (selectedCell.textContent)
-                        highlightSameNumbers(selectedCell.textContent);
+                    if (selectedCell.textContent) highlightSameNumbers(selectedCell.textContent);
                     selectedCell.classList.add("selected");
                 }
             });
@@ -153,8 +110,7 @@ function generateBoard(boardString) {
             if (!cell.classList.contains("selected")) clearHighlights();
             if (selectedCell) {
                 highlightRowColBox(selectedCell);
-                if (selectedCell.textContent)
-                    highlightSameNumbers(selectedCell.textContent);
+                if (selectedCell.textContent) highlightSameNumbers(selectedCell.textContent);
                 selectedCell.classList.add("selected");
             }
         });
@@ -162,17 +118,6 @@ function generateBoard(boardString) {
         boardContainer.appendChild(cell);
     });
 }
-
-// -------------------------------------------
-// Start Game (with Flask API and loading screen)
-// -------------------------------------------
-startBtn.addEventListener("click", async () => {
-    // Store difficulty in sessionStorage so loading page can access it
-    sessionStorage.setItem("difficulty", selectedDifficulty);
-
-    // Show loading screen - generation will happen on that page
-    window.location.href = "/loading";
-});
 
 // -------------------------------------------
 // Cell selection
@@ -185,27 +130,19 @@ function selectCell(cell) {
     if (cell.textContent) highlightSameNumbers(cell.textContent);
 }
 
-// --- Highlight helpers ---
 function highlightRowColBox(cell) {
     const idx = parseInt(cell.dataset.index);
     const row = Math.floor(idx / 9);
     const col = idx % 9;
-
     const cells = boardContainer.querySelectorAll(".cell");
     cells.forEach((c, i) => {
         const r = Math.floor(i / 9);
         const cCol = i % 9;
-
         const boxRow = Math.floor(r / 3);
         const boxCol = Math.floor(cCol / 3);
         const selBoxRow = Math.floor(row / 3);
         const selBoxCol = Math.floor(col / 3);
-
-        if (
-            r === row ||
-            cCol === col ||
-            (boxRow === selBoxRow && boxCol === selBoxCol)
-        ) {
+        if (r === row || cCol === col || (boxRow === selBoxRow && boxCol === selBoxCol)) {
             c.classList.add("related");
         }
     });
@@ -214,109 +151,32 @@ function highlightRowColBox(cell) {
 function highlightSameNumbers(num) {
     const cells = boardContainer.querySelectorAll(".cell");
     cells.forEach((c) => {
-        if (c.textContent === num) {
-            c.classList.add("same-number");
-        }
+        if (c.textContent === num) c.classList.add("same-number");
     });
 }
 
 function clearHighlights() {
-    boardContainer
-        .querySelectorAll(".selected, .related, .same-number")
-        .forEach((el) =>
-            el.classList.remove("selected", "related", "same-number"),
-        );
-}
-
-// -------------------------------------------
-// Number pad input
-// -------------------------------------------
-numPad.addEventListener("click", (e) => {
-    const button = e.target.closest("button");
-    if (!button) return;
-
-    const number = button.dataset.num;
-
-    clearHighlights();
-    highlightSameNumbers(number);
-
-    if (selectedCell) {
-        selectedCell.classList.add("selected");
-        highlightRowColBox(selectedCell);
-        if (selectedCell.textContent)
-            highlightSameNumbers(selectedCell.textContent);
-    }
-
-    if (!selectedCell) return;
-
-    const index = Array.from(boardContainer.children).indexOf(selectedCell);
-
-    if (solution[index] === number) {
-        selectedCell.textContent = number;
-        selectedCell.classList.remove("selected");
-        selectedCell.classList.add("locked");
-        undoStack.push({ cell: selectedCell, value: number });
-        clearHighlights();
-        selectedCell = null;
-        checkWin();
-    } else {
-        mistakes++;
-        errCounter.textContent = mistakes;
-        selectedCell.classList.add("error");
-        setTimeout(() => selectedCell.classList.remove("error"), 300);
-        if (mistakes >= 3) gameOver();
-    }
-});
-
-// -------------------------------------------
-// Undo
-// -------------------------------------------
-undoBtn.addEventListener("click", () => {
-    const last = undoStack.pop();
-    if (!last) return;
-    last.cell.textContent = "";
-    last.cell.classList.remove("locked");
-});
-
-// -------------------------------------------
-// Hint
-// -------------------------------------------
-hintBtn.addEventListener("click", () => {
-    if (hintsLeft <= 0) return;
-    const emptyCells = Array.from(boardContainer.children).filter(
-        (c) => !c.textContent,
+    if (!boardContainer) return;
+    boardContainer.querySelectorAll(".selected, .related, .same-number").forEach((el) =>
+        el.classList.remove("selected", "related", "same-number")
     );
-    if (emptyCells.length === 0) return;
-    const randomCell =
-        emptyCells[Math.floor(Math.random() * emptyCells.length)];
-    const index = Array.from(boardContainer.children).indexOf(randomCell);
-
-    randomCell.textContent = solution[index];
-    randomCell.classList.add("hinted");
-    hintsLeft--;
-    numHint.textContent = hintsLeft;
-});
+}
 
 // -------------------------------------------
 // Check Win / Game Over
 // -------------------------------------------
 function checkWin() {
-    const filled = Array.from(boardContainer.children).every(
-        (c) => c.textContent !== "",
-    );
+    if (!boardContainer) return;
+    const filled = Array.from(boardContainer.children).every((c) => c.textContent !== "");
     if (filled) {
         stopTimer();
-
         const difficulty = sessionStorage.getItem("difficulty") || "easy";
         const score = calculateScore(difficulty, seconds, mistakes);
-
         sessionStorage.setItem("finalScore", score);
         sessionStorage.setItem("gameTime", seconds);
         sessionStorage.setItem("gameMistakes", mistakes);
         sessionStorage.setItem("gameDifficulty", difficulty);
-
         sendScoreToBackend(difficulty, seconds, mistakes, score);
-
         window.location.href = "/result";
     }
 }
@@ -327,63 +187,143 @@ function gameOver() {
     window.location.href = "/over";
 }
 
-// -------------------------------------------
-// Send score to backend
-// -------------------------------------------
 async function sendScoreToBackend(difficulty, timeTaken, mistakesMade, score) {
     try {
         const response = await fetch("/api/save-score", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                difficulty: difficulty,
-                time: timeTaken,
-                mistakes: mistakesMade,
-                score: score,
-                timestamp: new Date().toISOString(),
-            }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ difficulty, time: timeTaken, mistakes: mistakesMade, score, timestamp: new Date().toISOString() }),
         });
-
-        if (!response.ok) {
-            console.warn("Failed to save score to backend");
-        }
-
-        const data = await response.json();
-        console.log("Score saved:", data);
+        if (!response.ok) console.warn("Failed to save score");
+        console.log("Score saved:", await response.json());
     } catch (error) {
-        console.error("Error sending score to backend:", error);
+        console.error("Error sending score:", error);
     }
 }
 
 // -------------------------------------------
-// Retry / Home
-// -------------------------------------------
-overBtn.addEventListener("click", () => {
-    document.cookie = "game_state=; path=/; max-age=0";
-    window.location.href = "/";
-});
-
-homeBtn.addEventListener("click", () => {
-    document.cookie = "game_state=; path=/; max-age=0";
-    window.location.href = "/";
-});
-
-// -------------------------------------------
-// Initialize game page (when loaded)
+// Initialize everything when DOM is ready
 // -------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
+    // Initialize elements
+    boardContainer = document.getElementById("board");
+    startBtn = document.getElementById("start-button");
+    overBtn = document.getElementById("over-button");
+    homeBtn = document.getElementById("home-button");
+    diffBtns = document.querySelectorAll(".diff-select button");
+    errCounter = document.getElementById("err-counter");
+    hintBtn = document.getElementById("hint");
+    undoBtn = document.getElementById("undo");
+    timerMin = document.getElementById("timer-min");
+    timerSec = document.getElementById("timer-sec");
+    numPad = document.getElementById("numPad");
+    numHint = document.getElementById("num-hint");
+
+    // Difficulty selection
+    if (diffBtns && diffBtns.length > 0) {
+        diffBtns.forEach((btn) => {
+            btn.addEventListener("click", () => {
+                diffBtns.forEach((b) => b.classList.remove("Dselected"));
+                btn.classList.add("Dselected");
+                selectedDifficulty = btn.id;
+                localStorage.setItem("diff", selectedDifficulty);
+            });
+        });
+        const savedDiff = localStorage.getItem("diff");
+        if (savedDiff) {
+            diffBtns.forEach((b) => b.classList.toggle("Dselected", b.id === savedDiff));
+            selectedDifficulty = savedDiff;
+        }
+    }
+
+    // Start button
+    if (startBtn) {
+        startBtn.addEventListener("click", () => {
+            sessionStorage.setItem("difficulty", selectedDifficulty);
+            window.location.href = "/loading";
+        });
+    }
+
+    // Number pad
+    if (numPad) {
+        numPad.addEventListener("click", (e) => {
+            const button = e.target.closest("button");
+            if (!button || !selectedCell) return;
+            const number = button.dataset.num;
+            clearHighlights();
+            highlightSameNumbers(number);
+            selectedCell.classList.add("selected");
+            highlightRowColBox(selectedCell);
+            if (selectedCell.textContent) highlightSameNumbers(selectedCell.textContent);
+
+            const index = Array.from(boardContainer.children).indexOf(selectedCell);
+            if (solution[index] === number) {
+                selectedCell.textContent = number;
+                selectedCell.classList.remove("selected");
+                selectedCell.classList.add("locked");
+                undoStack.push({ cell: selectedCell, value: number });
+                clearHighlights();
+                selectedCell = null;
+                checkWin();
+            } else {
+                mistakes++;
+                if (errCounter) errCounter.textContent = mistakes;
+                selectedCell.classList.add("error");
+                setTimeout(() => selectedCell.classList.remove("error"), 300);
+                if (mistakes >= 3) gameOver();
+            }
+        });
+    }
+
+    // Undo button
+    if (undoBtn) {
+        undoBtn.addEventListener("click", () => {
+            const last = undoStack.pop();
+            if (last) {
+                last.cell.textContent = "";
+                last.cell.classList.remove("locked");
+            }
+        });
+    }
+
+    // Hint button
+    if (hintBtn) {
+        hintBtn.addEventListener("click", () => {
+            if (hintsLeft <= 0 || !boardContainer) return;
+            const emptyCells = Array.from(boardContainer.children).filter((c) => !c.textContent);
+            if (emptyCells.length === 0) return;
+            const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            const index = Array.from(boardContainer.children).indexOf(randomCell);
+            randomCell.textContent = solution[index];
+            randomCell.classList.add("hinted");
+            hintsLeft--;
+            if (numHint) numHint.textContent = hintsLeft;
+        });
+    }
+
+    // Over/Home buttons
+    if (overBtn) {
+        overBtn.addEventListener("click", () => {
+            document.cookie = "game_state=; path=/; max-age=0";
+            window.location.href = "/";
+        });
+    }
+    if (homeBtn) {
+        homeBtn.addEventListener("click", () => {
+            document.cookie = "game_state=; path=/; max-age=0";
+            window.location.href = "/";
+        });
+    }
+
+    // Initialize game if puzzle exists in sessionStorage
     if (boardContainer && sessionStorage.getItem("puzzle")) {
         currentBoard = sessionStorage.getItem("puzzle");
         solution = sessionStorage.getItem("solution");
-
         mistakes = 0;
         hintsLeft = 2;
         undoStack = [];
-        errCounter.textContent = mistakes;
-        numHint.textContent = hintsLeft;
-
+        if (errCounter) errCounter.textContent = mistakes;
+        if (numHint) numHint.textContent = hintsLeft;
         generateBoard(currentBoard);
         startTimer();
     }

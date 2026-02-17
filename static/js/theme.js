@@ -3,6 +3,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const lightBtn = document.getElementById("light-mode");
     const darkBtn = document.getElementById("dark-mode");
 
+    // Exit if buttons don't exist
+    if (!lightBtn || !darkBtn) return;
+
     // Reads the saved theme (or sets light)
     const savedTheme = localStorage.getItem("theme") || "light";
     body.classList.toggle("dark-theme", savedTheme === "dark");

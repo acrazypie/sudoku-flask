@@ -4,10 +4,39 @@ Handles puzzle generation, solving, validation, and scoring
 """
 
 from flask import Blueprint, jsonify, request, session
-from sudoku_solver import SudokuSolver
+
+from api.generator.puzzle_generator import PuzzleGenerator
+from api.solver.solver import SudokuSolver
+from api.hints.hint_engine import HintEngine
+from api.board.board import Board
+from api.board.constants import EMPTY_CELL
+from api.validation.rules import validate_complete
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
-sudoku = SudokuSolver()
+
+_generator = PuzzleGenerator()
+_solver = SudokuSolver()
+_hint_engine = HintEngine()
+
+
+def _board_to_string(board: Board) -> str:
+    """Convert board to string representation."""
+    result = []
+    for i in range(81):
+        val = board.get_cell_by_index(i).value
+        result.append(str(val) if val != EMPTY_CELL else ".")
+    return "".join(result)
+
+
+def _string_to_board(board_str: str) -> Board:
+    """Convert string to board."""
+    values = []
+    for char in board_str:
+        if char == ".":
+            values.append(EMPTY_CELL)
+        else:
+            values.append(int(char))
+    return Board(values)
 
 
 @api_bp.route("/generate", methods=["POST"])
@@ -17,17 +46,19 @@ def generate_puzzle():
     difficulty = data.get("difficulty", "easy")
 
     try:
-        puzzle = sudoku.generate(difficulty)
+        puzzle_board = _generator.generate(difficulty)
+        
+        puzzle_str = _board_to_string(puzzle_board)
+        
+        solution_board = puzzle_board.copy()
+        _solver.solve(solution_board, collect_steps=False)
+        solution_str = _board_to_string(solution_board)
 
-        # Solve the puzzle to get the solution
-        solution = sudoku.solve(puzzle)
-
-        # Store in session
-        session["puzzle"] = puzzle
-        session["solution"] = solution
+        session["puzzle"] = puzzle_str
+        session["solution"] = solution_str
         session["difficulty"] = difficulty
 
-        return jsonify({"success": True, "puzzle": puzzle, "difficulty": difficulty})
+        return jsonify({"success": True, "puzzle": puzzle_str, "difficulty": difficulty})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
 
@@ -36,11 +67,14 @@ def generate_puzzle():
 def solve_puzzle():
     """Solve a given Sudoku puzzle"""
     data = request.get_json()
-    board = data.get("board", "")
+    board_str = data.get("board", "")
 
     try:
-        solution = sudoku.solve(board)
-        return jsonify({"success": True, "solution": solution})
+        board = _string_to_board(board_str)
+        solved = board.copy()
+        _solver.solve(solved, collect_steps=False)
+        solution_str = _board_to_string(solved)
+        return jsonify({"success": True, "solution": solution_str})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
 
@@ -49,7 +83,7 @@ def solve_puzzle():
 def validate_move():
     """Validate if a move is correct"""
     data = request.get_json()
-    board = data.get("board", "")
+    board_str = data.get("board", "")
     index = data.get("index", -1)
     value = data.get("value", "")
     solution = data.get("solution", "")
@@ -67,22 +101,32 @@ def validate_move():
 def get_hint():
     """Get a hint for the current board"""
     data = request.get_json()
-    solution = data.get("solution", "")
-    current_board = data.get("board", "")
+    board_str = data.get("board", "")
+    solution_str = data.get("solution", "")
 
     try:
-        if not solution or not current_board:
+        if not solution_str or not board_str:
             return (
                 jsonify({"success": False, "error": "Missing board or solution"}),
                 400,
             )
 
-        # Find first empty cell
-        for i, cell in enumerate(current_board):
-            if cell == ".":
-                return jsonify({"success": True, "index": i, "value": solution[i]})
+        board = _string_to_board(board_str)
+        
+        _hint_engine.reset()
+        step = _hint_engine.get_next_hint(board)
+        
+        if step and step.value is not None:
+            index = step.cell_index
+            value = str(step.value)
+            return jsonify({
+                "success": True, 
+                "index": index, 
+                "value": value,
+                "explanation": step.explanation
+            })
 
-        return jsonify({"success": False, "error": "No empty cells"}), 400
+        return jsonify({"success": False, "error": "No hints available"}), 400
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
 
@@ -103,7 +147,6 @@ def save_score():
     data = request.get_json() or {}
 
     try:
-        # Get or create scores list in session
         if "scores" not in session:
             session["scores"] = []
 
@@ -115,11 +158,9 @@ def save_score():
             "timestamp": data.get("timestamp", ""),
         }
 
-        # Add to scores list
         session["scores"].append(score_entry)
         session.modified = True
 
-        # Calculate statistics
         scores_list = [s["score"] for s in session["scores"]]
         stats = {
             "current_score": score_entry["score"],
